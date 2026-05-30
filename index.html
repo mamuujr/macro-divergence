@@ -23,7 +23,28 @@ input{font-family:inherit;outline:none}
 .tick-chg-up{color:#003d00;font-size:10px;font-weight:700}
 .tick-chg-dn{color:#3d0000;font-size:10px;font-weight:700}
 .tick-load{color:rgba(0,0,0,0.35);font-size:10px}
-.tick-label{color:rgba(0,0,0,0.45);font-size:9px;letter-spacing:3px;padding:0 14px;flex-shrink:0}
+.tick-label{color:rgba(0,0,0,0.45);font-size:9px;letter-spacing:3px;padding:0 14px;flex-shrink:0}<!-- START OF TRADINGVIEW CHART CONTAINER -->
+<div style="width: 100%; height: 500px; margin-top: 30px; background-color: #131722; border-radius: 8px; padding: 10px; box-sizing: border-box;">
+  <div class="tradingview-widget-container" style="height:100%; width:100%;">
+    <div class="tradingview-widget-container__widget" style="height:100%; width:100%;"></div>
+    <script type="text/javascript" src="https://tradingview.com" async>
+    {
+      "autosize": true,
+      "symbol": "CAPITALCOM:DXY",
+      "interval": "D",
+      "timezone": "Etc/UTC",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "allow_symbol_change": true,
+      "calendar": false,
+      "support_host": "https://tradingview.com"
+    }
+    </script>
+  </div>
+</div>
+<!-- END OF TRADINGVIEW CHART CONTAINER -->
+
 
 /* ── HEADER ───────────────────────────────────── */
 #hdr{border-bottom:1px solid #1a1a1a;padding:16px 28px;display:flex;justify-content:space-between;align-items:center;background:#070707;flex-wrap:wrap;gap:12px}
