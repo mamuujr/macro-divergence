@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Macro-Divergence Engine | Makuujr Research</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#050505;color:#ddd;font-family:'IBM Plex Mono','Courier New',monospace;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:3px;height:3px;background:#050505}
+::-webkit-scrollbar-thumb{background:#FF6B00}
+button{font-family:inherit;cursor:pointer;outline:none}
+input{font-family:inherit;outline:none}
+
+/* ── TICKER STRIP ─────────────────────────────── */
+#ticker-wrap{background:#FF6B00;border-bottom:2px solid #cc5500;padding:0;height:38px;overflow:hidden;position:relative;cursor:default}
+#ticker-track{display:flex;align-items:center;height:100%;white-space:nowrap;will-change:transform;position:absolute;top:0;left:0}
+#ticker-track:hover{/* handled by JS */}
+.tick-item{display:inline-flex;align-items:center;gap:8px;padding:0 22px;height:100%;border-right:1px solid rgba(0,0,0,0.15);flex-shrink:0}
+.tick-pair{color:#000;font-size:11px;font-weight:700;letter-spacing:2px}
+.tick-price{color:#000;font-size:13px;font-weight:700;letter-spacing:1px}
+.tick-chg-up{color:#003d00;font-size:10px;font-weight:700}
+.tick-chg-dn{color:#3d0000;font-size:10px;font-weight:700}
+.tick-load{color:rgba(0,0,0,0.35);font-size:10px}
+.tick-label{color:rgba(0,0,0,0.45);font-size:9px;letter-spacing:3px;padding:0 14px;flex-shrink:0}
+
+/* ── HEADER ───────────────────────────────────── */
+#hdr{border-bottom:1px solid #1a1a1a;padding:16px 28px;display:flex;justify-content:space-between;align-items:center;background:#070707;flex-wrap:wrap;gap:12px}
+.brand{color:#FF6B00;font-size:9px;letter-spacing:6px;font-weight:700;margin-bottom:4px}
+.htitle{color:#fff;font-size:19px;font-weight:700;letter-spacing:3px}
+.hsub{color:#666;font-size:10px;letter-spacing:2px;margin-top:3px}
+#dot{width:9px;height:9px;border-radius:50%;background:#CCAA00;display:inline-block;margin-right:7px;transition:background .4s}
+#stext{font-size:10px;letter-spacing:2px;color:#CCAA00;font-weight:700;transition:color .4s}
+#lastscan{color:#444;font-size:9px;margin-top:4px;text-align:right}
+
+/* ── DATA STATUS ──────────────────────────────── */
+#dstatus{padding:8px 28px;display:flex;gap:0;flex-wrap:wrap;border-bottom:1px solid #0f0f0f;background:#060606}
+.ds{font-size:9px;padding:3px 18px 3px 0;border-right:1px solid #111;margin-right:18px;letter-spacing:1px}
+.ds:last-child{border-right:none}
+.ds-l{color:#555}.ds-v{font-weight:700}
+
+/* ── CONTROL BAR ──────────────────────────────── */
+#bar{padding:12px 28px;border-bottom:1px solid #111;display:flex;align-items:center;gap:12px;background:#060606;flex-wrap:wrap}
+#rbtn{background:transparent;border:1px solid #FF6B00;color:#FF6B00;font-size:11px;font-weight:700;letter-spacing:3px;padding:10px 26px;transition:all .15s}
+#rbtn:hover:not(:disabled){background:#FF6B00;color:#000}
+#rbtn:disabled{opacity:.5;cursor:wait}
+#fetching{color:#FF6B00;font-size:10px;letter-spacing:2px;display:none;animation:pulse 1s infinite}
+
+/* ── COUNTDOWN ────────────────────────────────── */
+#cbar{padding:5px 28px;background:#040404;border-bottom:1px solid #0a0a0a;display:flex;align-items:center;gap:10px}
+#ctrack{width:200px;height:2px;background:#111}
+#cfill{height:2px;background:#FF6B00;width:100%;transition:width 1s linear}
+#ctext{color:#555;font-size:9px;min-width:36px}
+#cnext{color:#333;font-size:9px;letter-spacing:1px}
+
+/* ── TABS ─────────────────────────────────────── */
+#tabs{display:flex;border-bottom:1px solid #111;padding:0 28px;overflow-x:auto;background:#050505;margin-top:0}
+.tab{background:transparent;border:none;border-bottom:3px solid transparent;font-size:10px;letter-spacing:2px;font-weight:700;padding:12px 20px;transition:all .15s;white-space:nowrap;cursor:pointer}
+.tab:hover{opacity:.8}
+.t-fed{color:#444;font-family:inherit}.t-fed.active{color:#FF6B00;border-bottom-color:#FF6B00}
+.t-cb{color:#444;font-family:inherit}.t-cb.active{color:#00E5FF;border-bottom-color:#00E5FF}
+.t-geo{color:#444;font-family:inherit}.t-geo.active{color:#CCAA00;border-bottom-color:#CCAA00}
+.t-watch{color:#444;font-family:inherit}.t-watch.active{color:#44CC88;border-bottom-color:#44CC88}
+.t-trig{color:#444;font-family:inherit}.t-trig.active{color:#fff;border-bottom-color:#fff}
+
+#tc{padding:24px 28px}
+.panel{display:none}.panel.active{display:block}
+
+/* ── SECTION HEADERS ──────────────────────────── */
+.sh{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.sh-line{flex:1;height:1px}
+.sh-label{font-size:9px;letter-spacing:4px;font-weight:700;white-space:nowrap}
+
+/* ── TABLES ───────────────────────────────────── */
+.tscroll{overflow-x:auto;border:1px solid #111}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;padding:10px 14px;font-size:9px;letter-spacing:1.5px;font-weight:700;white-space:nowrap;border-bottom:2px solid}
+td{padding:11px 14px;border-bottom:1px solid #111;vertical-align:middle;color:#ddd}
+tr:nth-child(even) td{background:#0a0a0a}
+tr:hover td{background:#111!important}
+.sbar{display:flex;gap:2px;align-items:center}
+.seg{width:6px;height:14px;background:#1a1a1a}
+.seg.on{background:#FF6B00}
+.snum{color:#FF6B00;font-size:11px;margin-left:5px;font-weight:700}
+.pill{display:inline-block;padding:3px 9px;font-size:9px;font-weight:700;letter-spacing:1px;border:1px solid}
+
+/* ── CARDS ────────────────────────────────────── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr}}
+.card{background:#0d0d0d;border:1px solid #1a1a1a;padding:16px}
+.card-val{font-size:28px;font-weight:700;line-height:1;letter-spacing:1px}
+.card-label{font-size:8px;letter-spacing:3px;margin-bottom:6px}
+.card-sub{font-size:9px;margin-top:5px;letter-spacing:1px}
+
+/* ── PAIR CARDS ───────────────────────────────── */
+.pairs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.pc{border:1px solid #1e1e1e;background:#0d0d0d;padding:18px;position:relative;transition:all .2s}
+.pc:hover{border-color:#FF6B00;transform:translateY(-2px)}
+.pc.top{border-color:#FF6B00}
+.pc.hi{border-left:3px solid #FF6B00}
+.pc.med{border-left:3px solid #CCAA00}
+.pc.lo{border-left:3px solid #333}
+.topbadge{position:absolute;top:0;right:0;background:#FF6B00;color:#000;font-size:8px;font-weight:700;letter-spacing:2px;padding:3px 12px}
+.pcols{display:flex;gap:6px;margin:12px 0}
+.pcol{flex:1;text-align:center;padding:9px 4px;background:#141414;border:1px solid #222}
+.ez{padding:10px 12px;background:#080808;margin-bottom:12px}
+.lrate{font-size:22px;font-weight:700;color:#fff;letter-spacing:1px}
+.geo-flag{display:inline-block;padding:2px 8px;font-size:8px;font-weight:700;letter-spacing:2px;border-radius:0}
+
+/* ── WATCHLIST ────────────────────────────────── */
+.wc{border:1px solid #1e1e1e;background:#0d0d0d;margin-bottom:14px;padding:22px;transition:border-color .2s}
+.wc.top{border-color:#44CC88}
+.wch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.wgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:640px){.wgrid{grid-template-columns:1fr}}
+.wcell{padding:14px;background:#111;border:1px solid #1a1a1a}
+.wlogic{margin-top:14px;padding:12px 16px;background:#080808;font-size:11px;color:#bbb;line-height:1.8}
+.erules{padding:16px 20px;border:1px solid #1e1e1e;background:#0d0d0d;margin-top:12px}
+.er{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #111;font-size:11px;color:#ccc;line-height:1.5}
+.er:last-child{border-bottom:none}
+
+/* ── OIS TABLE ────────────────────────────────── */
+.ois-card{background:#0d0d0d;border:1px solid #1a1a1a;margin-bottom:12px}
+.ois-hdr{padding:12px 18px;background:#111;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.pbar-track{width:90px;height:6px;background:#1a1a1a;display:inline-block;vertical-align:middle}
+.pbar-fill{height:6px;display:inline-block;vertical-align:top}
+
+/* ── TRIGGER CHECKLIST ────────────────────────── */
+.trig-pair{background:#0d0d0d;border:1px solid #1e1e1e;margin-bottom:14px;padding:20px}
+.trig-pair.top{border-color:#fff}
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+@media(max-width:600px){.check-grid{grid-template-columns:1fr}}
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#080808;border:1px solid #111;cursor:pointer;user-select:none}
+.check-item:hover{background:#0f0f0f}
+.check-box{width:18px;height:18px;border:2px solid #333;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;margin-top:1px}
+.check-box.checked{border-color:#44CC88;background:#001a00}
+.check-text{font-size:10px;color:#aaa;line-height:1.5}
+.score-display{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;background:#060606;border:1px solid #111}
+.score-num{font-size:24px;font-weight:700}
+.entry-rules-box{background:#060606;border:1px solid #111;padding:14px 18px;margin-top:14px}
+
+/* ── GEO RISK ─────────────────────────────────── */
+.geo-event{background:#0d0d0d;border:1px solid #1a1a1a;border-left:3px solid;padding:14px 18px;margin-bottom:10px}
+.regime-display{display:flex;align-items:center;gap:20px;padding:16px 20px;border:1px solid;margin-bottom:20px;flex-wrap:wrap}
+
+/* ── FED PANEL ────────────────────────────────── */
+.sep-table table th{border-bottom-color:#FF6B00;color:#aaa;background:#0d0d0d}
+.sep-table .better{color:#44CC88}.sep-table .worse{color:#FF4455}.sep-table .same{color:#888}
+.rxn-box{background:#0d0d0d;border:1px solid #1a1a1a;border-left:3px solid #FF6B00;padding:16px 20px;margin-top:16px}
+
+/* ── UTILS ─────────────────────────────────────── */
+.vtag{font-size:8px;padding:1px 5px;font-weight:700;letter-spacing:1px;display:inline-block;border:1px solid}
+#ftr{border-top:1px solid #0f0f0f;padding:12px 28px;display:flex;justify-content:space-between;color:#333;font-size:9px;flex-wrap:wrap;gap:4px;margin-top:24px}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fadeIn .3s ease forwards}
+</style>
+</head>
+<body>
+
+<!-- ── TICKER STRIP ─────────────────────────────────────── -->
+<div id="ticker-wrap">
+  <div id="ticker-track"></div>
+</div>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<div id="hdr">
+  <div>
+    <div class="brand">MAKUUJR RESEARCH</div>
+    <div class="htitle">MACRO-DIVERGENCE ENGINE</div>
+    <div class="hsub">USD vs G7 · CB DIVERGENCE · GEO RISK · CANDLESTICK TRIGGER · LIVE DATA</div>
+  </div>
+  <div style="text-align:right">
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:4px">
+      <span id="dot"></span><span id="stext">INITIALIZING</span>
+    </div>
+    <div id="lastscan">Fetching live data...</div>
+  </div>
+</div>
+
+<!-- FRED KEY BAR -->
+<div id="fred-bar" style="padding:7px 28px;background:#0a0500;border-bottom:1px solid #2a1200;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <span style="color:#FF6B00;font-size:9px;letter-spacing:3px;font-weight:700;white-space:nowrap">FRED API</span>
+  <input id="fred-key-input" type="password" placeholder="Paste FRED API key here — fred.stlouisfed.org/docs/api/api_key.html" style="background:#000;border:1px solid #2a1200;color:#FF6B00;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:5px 10px;width:380px;max-width:100%;outline:none;letter-spacing:1px"/>
+  <button onclick="saveFredKey()" style="background:transparent;border:1px solid #FF6B00;color:#FF6B00;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:2px;padding:6px 14px">SAVE &amp; CONNECT</button>
+  <span id="fred-status" style="font-size:9px;letter-spacing:1px;color:#444">NO KEY — 2Y YIELD &amp; DXY LOADING FROM FRED ONCE KEY SET</span>
+  <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" style="color:#444;font-size:8px;margin-left:auto;text-decoration:none;letter-spacing:1px;white-space:nowrap">GET FREE KEY (2 min) &#8594;</a>
+</div>
+
+<!-- DATA STATUS -->
+<div id="dstatus">
+  <div class="ds"><span class="ds-l">FX RATES: </span><span class="ds-v" id="ds-fx" style="color:#333">—</span></div>
+  <div class="ds"><span class="ds-l">GOLD: </span><span class="ds-v" id="ds-gold" style="color:#333">—</span></div>
+  <div class="ds"><span class="ds-l">2Y YIELD: </span><span class="ds-v" id="ds-yield" style="color:#333">—</span></div>
+  <div class="ds"><span class="ds-l">DXY: </span><span class="ds-v" id="ds-dxy" style="color:#333">—</span></div>
+  <div class="ds"><span class="ds-l">CORE PCE: </span><span class="ds-v" id="ds-pce" style="color:#FF4455">3.30% APR 2026</span></div>
+  <div class="ds"><span class="ds-l">CORE CPI MoM: </span><span class="ds-v" id="ds-cpi-stat" style="color:#FF4455">+0.4% APR 2026</span></div>
+  <div class="ds"><span class="ds-l">UNEMP: </span><span class="ds-v" id="ds-unemp" style="color:#888">4.3%</span></div>
+  <div class="ds"><span class="ds-l">GEO RISK: </span><span class="ds-v" style="color:#FF4455">IRAN WAR ACTIVE</span></div>
+</div>
+
+<!-- ── CONTROL BAR ─────────────────────────────────────────── -->
+<div id="bar">
+  <button id="rbtn" onclick="refreshAll()">↻ REFRESH LIVE DATA</button>
+  <span id="fetching">● FETCHING LIVE DATA...</span>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+    <span style="color:#333;font-size:9px;letter-spacing:2px">NEXT REFRESH</span>
+    <div id="ctrack"><div id="cfill"></div></div>
+    <span id="ctext" style="color:#555;font-size:9px">3:00</span>
+  </div>
+</div>
+
+<!-- ── TABS ───────────────────────────────────────────────── -->
+<div id="tabs">
+  <button class="tab t-fed active"   onclick="sw('fed',this)">① FED PANEL</button>
+  <button class="tab t-cb"           onclick="sw('cb',this)">② G7 CB MATRIX</button>
+  <button class="tab t-geo"          onclick="sw('geo',this)">③ GEO / SENTIMENT</button>
+  <button class="tab t-watch"        onclick="sw('watch',this)">④ WATCHLIST</button>
+  <button class="tab t-trig"         onclick="sw('trig',this)">⑤ TRIGGER CHECKLIST</button>
+</div>
+
+<div id="tc">
+
+<!-- ══════════════════════════════════════════════
+     TAB 1 — FED PANEL
+══════════════════════════════════════════════ -->
+<div id="panel-fed" class="panel active fi">
+
+  <!-- KPI row -->
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card" style="border-left:3px solid #FF6B00">
+      <div class="card-label" style="color:#FF6B00">FED FUNDS RATE</div>
+      <div class="card-val" style="color:#FF6B00">3.50–3.75%</div>
+      <div class="card-sub" style="color:#666">HELD · APR 29 2026 · 8–4 VOTE</div>
+    </div>
+    <div class="card" style="border-left:3px solid #FF4455">
+      <div class="card-label" style="color:#FF4455">CORE PCE YoY</div>
+      <div class="card-val" style="color:#FF4455">3.30%</div>
+      <div class="card-sub" style="color:#666">↑ FROM 3.20% MARCH · RE-ACCELERATING</div>
+    </div>
+    <div class="card" style="border-left:3px solid #FF4455">
+      <div class="card-label" style="color:#FF4455">CORE CPI MoM</div>
+      <div class="card-val" style="color:#FF4455">+0.4%</div>
+      <div class="card-sub" style="color:#666">HIGHEST SINCE JAN 2025 · YoY 2.8%</div>
+    </div>
+    <div class="card" style="border-left:3px solid #888">
+      <div class="card-label" style="color:#888">UNEMPLOYMENT</div>
+      <div class="card-val" style="color:#ddd">4.3%</div>
+      <div class="card-sub" style="color:#666">→ STABLE · DUAL MANDATE INTACT</div>
+    </div>
+  </div>
+
+  <!-- PMI + Yields row -->
+  <div class="grid-4" style="margin-bottom:24px">
+    <div class="card" style="border-left:3px solid #44CC88">
+      <div class="card-label" style="color:#44CC88">MFG PMI (MAY FLASH)</div>
+      <div class="card-val" style="color:#44CC88">55.3</div>
+      <div class="card-sub" style="color:#666">STRONGEST SINCE MAY 2022 ↑</div>
+    </div>
+    <div class="card" style="border-left:3px solid #44CC88">
+      <div class="card-label" style="color:#44CC88">COMPOSITE PMI (MAY)</div>
+      <div class="card-val" style="color:#44CC88">51.7</div>
+      <div class="card-sub" style="color:#666">RESILIENT · SAME AS APRIL</div>
+    </div>
+    <div class="card" style="border-left:3px solid #CCAA00">
+      <div class="card-label" style="color:#CCAA00">2Y TREASURY YIELD</div>
+      <div class="card-val" id="yield-2y" style="color:#CCAA00">—</div>
+      <div class="card-sub" style="color:#666">LIVE · KEY FED PRICING SIGNAL</div>
+    </div>
+    <div class="card" style="border-left:3px solid #CCAA00">
+      <div class="card-label" style="color:#CCAA00">DXY (USD INDEX)</div>
+      <div class="card-val" id="dxy-val" style="color:#CCAA00">—</div>
+      <div class="card-sub" style="color:#666">LIVE · DOLLAR STRENGTH GAUGE</div>
+    </div>
+  </div>
+
+  <!-- SEP Comparison -->
+  <div class="sh"><div class="sh-line" style="background:#1a1a1a"></div><span class="sh-label" style="color:#FF6B00">SEP PROJECTIONS — CURRENT vs MARCH 2026</span><div class="sh-line" style="background:#1a1a1a"></div></div>
+  <div class="sep-table tscroll" style="margin-bottom:24px">
+    <table>
+      <thead><tr style="background:#0d0d0d">
+        <th style="color:#aaa;border-bottom-color:#FF6B00">INDICATOR</th>
+        <th style="color:#aaa;border-bottom-color:#FF6B00">MARCH 2026 SEP</th>
+        <th style="color:#aaa;border-bottom-color:#FF6B00">CURRENT (ACT/EST)</th>
+        <th style="color:#aaa;border-bottom-color:#FF6B00">SHIFT</th>
+        <th style="color:#aaa;border-bottom-color:#FF6B00">FED IMPLICATION</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="color:#fff;font-weight:700">Core PCE 2026</td><td style="color:#888">2.7%</td><td style="color:#FF4455;font-weight:700">3.30% (Apr act.)</td><td class="worse">▲ WORSE</td><td style="color:#FF4455;font-size:10px">Re-acceleration — hawkish pressure ↑</td></tr>
+        <tr><td style="color:#fff;font-weight:700">Core CPI MoM</td><td style="color:#888">+0.2% est.</td><td style="color:#FF4455;font-weight:700">+0.4% (Apr act.)</td><td class="worse">▲ WORSE</td><td style="color:#FF4455;font-size:10px">Highest MoM since Jan 2025 — alarming</td></tr>
+        <tr><td style="color:#fff;font-weight:700">GDP Growth 2026</td><td style="color:#888">1.9%</td><td style="color:#CCAA00;font-weight:700">1.6% (Q1 act.)</td><td class="worse">▼ WEAKER</td><td style="color:#CCAA00;font-size:10px">Growth softening — limits hike path</td></tr>
+        <tr><td style="color:#fff;font-weight:700">Unemployment</td><td style="color:#888">4.4%</td><td style="color:#44CC88;font-weight:700">4.3% (current)</td><td class="better">▼ BETTER</td><td style="color:#44CC88;font-size:10px">Still tight — no cut urgency from labour</td></tr>
+        <tr><td style="color:#fff;font-weight:700">Fed Dots (cuts 2026)</td><td style="color:#888">2 cuts</td><td style="color:#FF4455;font-weight:700">0 cuts (market)</td><td class="worse">▼ REPRICED</td><td style="color:#FF4455;font-size:10px">Market removed all cuts — USD bullish</td></tr>
+        <tr><td style="color:#fff;font-weight:700">Mfg PMI (May)</td><td style="color:#888">~50 est.</td><td style="color:#44CC88;font-weight:700">55.3 (flash)</td><td class="better">▲ BETTER</td><td style="color:#44CC88;font-size:10px">Economy strong — confirms hold stance</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- OIS / FedWatch -->
+  <div class="sh"><div class="sh-line" style="background:#1a1a1a"></div><span class="sh-label" style="color:#FF6B00">CME FEDWATCH — OIS IMPLIED PRICING (MAY 29 2026)</span><div class="sh-line" style="background:#1a1a1a"></div></div>
+  <div style="margin-bottom:24px">
+    <div class="ois-card">
+      <div class="ois-hdr">
+        <div><span style="color:#fff;font-size:14px;font-weight:700">FED FUNDS RATE</span><span style="color:#FF6B00;margin-left:10px">3.50–3.75%</span></div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div style="text-align:center"><div style="color:#555;font-size:8px">NEXT MEETING</div><div style="color:#FF6B00;font-weight:700">JUN 17–18</div></div>
+          <div style="text-align:center"><div style="color:#555;font-size:8px">CUTS PRICED 2026</div><div style="color:#FF4455;font-weight:700">ZERO</div></div>
+          <div style="text-align:center"><div style="color:#555;font-size:8px">USD BIAS</div><div style="color:#FF6B00;font-weight:700">STRONG LONG ✓</div></div>
+        </div>
+      </div>
+      <table style="min-width:700px">
+        <thead><tr>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">#</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">MEETING DATE</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">PRICED MOVE</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">CUT %</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">HOLD %</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">HIKE %</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">DOMINANT PROBABILITY</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">IMPLIED RATE</th>
+          <th style="color:#888;border-bottom-color:#FF6B00;background:#0d0d0d">MARKET NOTE</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="color:#555">1</td><td style="color:#ccc;font-weight:600">Jun 17–18 2026</td>
+            <td><span style="color:#888;font-weight:700;font-size:12px">HOLD</span></td>
+            <td><span style="color:#44CC88;font-weight:700">0.1%</span></td>
+            <td><span style="color:#aaa;font-weight:700">99.9%</span></td>
+            <td><span style="color:#FF4455;font-weight:700">0.0%</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-track"><div class="pbar-fill" style="width:99.9%;background:#888"></div></div><span style="color:#aaa;font-size:9px;font-weight:700">99.9% HOLD</span></div></td>
+            <td><span style="color:#ddd;font-weight:700">3.625%</span></td>
+            <td style="color:#888;font-size:10px">Core PCE re-accelerating — Fed fully sidelined</td>
+          </tr>
+          <tr>
+            <td style="color:#555">2</td><td style="color:#ccc;font-weight:600">Jul 30 2026</td>
+            <td><span style="color:#888;font-weight:700;font-size:12px">HOLD</span></td>
+            <td><span style="color:#44CC88;font-weight:700">0.7%</span></td>
+            <td><span style="color:#aaa;font-weight:700">95.0%</span></td>
+            <td><span style="color:#FF4455;font-weight:700">4.2%</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-track"><div class="pbar-fill" style="width:95%;background:#888"></div></div><span style="color:#aaa;font-size:9px;font-weight:700">95.0% HOLD</span></div></td>
+            <td><span style="color:#ddd;font-weight:700">3.625%</span><span style="color:#555;font-size:8px;margin-left:6px">(0bps cum.)</span></td>
+            <td style="color:#888;font-size:10px">4.2% HIKE risk — inflation forcing hawkish tilt</td>
+          </tr>
+          <tr>
+            <td style="color:#555">3</td><td style="color:#ccc;font-weight:600">Sep 17 2026</td>
+            <td><span style="color:#44CC88;font-weight:700;font-size:12px">CUT WINDOW</span></td>
+            <td><span style="color:#44CC88;font-weight:700">51%</span></td>
+            <td><span style="color:#aaa;font-weight:700">45%</span></td>
+            <td><span style="color:#FF4455;font-weight:700">4%</span></td>
+            <td><div style="display:flex;align-items:center;gap:6px"><div class="pbar-track"><div class="pbar-fill" style="width:51%;background:#44CC88"></div></div><span style="color:#44CC88;font-size:9px;font-weight:700">51% CUT</span></div></td>
+            <td><span style="color:#ddd;font-weight:700">3.375%</span><span style="color:#555;font-size:8px;margin-left:6px">(-25bps cum.)</span></td>
+            <td style="color:#888;font-size:10px">Earliest realistic cut — data dependent on Jun/Jul CPI</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Reaction function -->
+  <div class="rxn-box">
+    <div style="color:#FF6B00;font-size:9px;letter-spacing:4px;margin-bottom:12px;font-weight:700">FED REACTION FUNCTION OUTPUT — MAY 29 2026</div>
+    <div class="grid-2">
+      <div>
+        <div style="color:#555;font-size:9px;margin-bottom:4px">INFLATION MANDATE STATUS</div>
+        <div style="color:#FF4455;font-size:13px;font-weight:700">NOT MET — PCE 3.30% vs 2.00% TARGET</div>
+        <div style="color:#555;font-size:9px;margin-top:8px;margin-bottom:4px">EMPLOYMENT MANDATE STATUS</div>
+        <div style="color:#44CC88;font-size:13px;font-weight:700">MET — UNEMPLOYMENT 4.3% STABLE</div>
+      </div>
+      <div>
+        <div style="color:#555;font-size:9px;margin-bottom:4px">CURRENT BIAS</div>
+        <div style="color:#FF6B00;font-size:16px;font-weight:700;letter-spacing:2px">HIGHER FOR LONGER</div>
+        <div style="color:#555;font-size:9px;margin-top:8px;margin-bottom:4px">TRIGGER TO CUT</div>
+        <div style="color:#888;font-size:11px">Core PCE &lt; 2.5% for 2+ months OR unemployment &gt; 4.8%</div>
+        <div style="color:#555;font-size:9px;margin-top:6px;margin-bottom:4px">MARKET vs FED GAP</div>
+        <div style="color:#44CC88;font-size:11px;font-weight:700">ALIGNED — Market pricing 0 cuts · Fed dots: hold</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 2 — G7 CB MATRIX
+══════════════════════════════════════════════ -->
+<div id="panel-cb" class="panel fi">
+  <div class="sh"><div class="sh-line" style="background:#1a1a1a"></div><span class="sh-label" style="color:#00E5FF">G7 CENTRAL BANK MATRIX — USD DIVERGENCE SCORING</span><div class="sh-line" style="background:#1a1a1a"></div></div>
+  <div class="tscroll" style="margin-bottom:24px">
+    <table style="min-width:1100px">
+      <thead><tr>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">BANK</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">RATE</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">CORE CPI</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">CORE PCE</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">UNEMP.</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">MFG PMI</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">SVC PMI</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">HAWK SCORE</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">STANCE</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">vs FED GAP</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">NEXT MOVE</th>
+        <th style="color:#aaa;border-bottom-color:#00E5FF;background:#0d0d0d">KEY RISK</th>
+      </tr></thead>
+      <tbody id="cb-tbody">
+        <!-- rendered by JS -->
+      </tbody>
+    </table>
+  </div>
+  <div style="color:#444;font-size:9px;text-align:right;margin-bottom:20px">
+    HAWK SCORE: 1 = MOST DOVISH · 10 = MOST HAWKISH · GAP = FED SCORE MINUS CB SCORE · POSITIVE = USD LONG BIAS
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 3 — GEO / SENTIMENT
+══════════════════════════════════════════════ -->
+<div id="panel-geo" class="panel fi">
+
+  <!-- Risk regime -->
+  <div class="regime-display" style="border-color:#FF4455;background:#0a0000;margin-bottom:20px">
+    <div>
+      <div style="color:#FF4455;font-size:9px;letter-spacing:4px;margin-bottom:4px">CURRENT RISK REGIME</div>
+      <div style="color:#FF4455;font-size:28px;font-weight:700;letter-spacing:3px">ELEVATED RISK</div>
+      <div style="color:#888;font-size:10px;margin-top:4px">IRAN-MIDDLE EAST WAR ACTIVE · OIL ~$100/bbl · SAFE-HAVEN FLOWS</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-left:auto;flex-wrap:wrap">
+      <div style="text-align:center"><div style="color:#555;font-size:8px;letter-spacing:1px">VIX REGIME</div><div style="color:#FF4455;font-size:18px;font-weight:700">ELEVATED</div><div style="color:#555;font-size:8px">&gt;20 = CAUTION</div></div>
+      <div style="text-align:center"><div style="color:#555;font-size:8px;letter-spacing:1px">GOLD</div><div style="color:#CCAA00;font-size:18px;font-weight:700" id="geo-gold">—</div><div style="color:#555;font-size:8px">SAFE HAVEN BID</div></div>
+      <div style="text-align:center"><div style="color:#555;font-size:8px;letter-spacing:1px">USD STATUS</div><div style="color:#44CC88;font-size:18px;font-weight:700">STRONGEST</div><div style="color:#555;font-size:8px">SAFE-HAVEN + MACRO</div></div>
+    </div>
+  </div>
+
+  <!-- Active events -->
+  <div class="sh"><div class="sh-line" style="background:#1a1a1a"></div><span class="sh-label" style="color:#CCAA00">ACTIVE GEOPOLITICAL EVENTS</span><div class="sh-line" style="background:#1a1a1a"></div></div>
+  <div style="margin-bottom:24px">
+    <div class="geo-event" style="border-left-color:#FF4455">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="color:#FF4455;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:4px">● ACTIVE — IRAN / MIDDLE EAST WAR</div>
+          <div style="color:#ccc;font-size:11px;line-height:1.7">US-Israeli military strikes ongoing. Strait of Hormuz disruption affecting ~20% of global crude supply. Oil near $100/barrel — largest energy crisis since 1970s.</div>
+        </div>
+        <span class="pill" style="color:#FF4455;border-color:#FF4455;background:#1a0000">HIGH IMPACT</span>
+      </div>
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">USD: </span><span style="color:#44CC88;font-weight:700">BULLISH — SAFE-HAVEN + NET ENERGY EXPORTER</span></div>
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">JPY: </span><span style="color:#CCAA00;font-weight:700">COMPLEX — SAFE HAVEN BUT ENERGY IMPORTER</span></div>
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">CHF: </span><span style="color:#CCAA00;font-weight:700">SAFE-HAVEN BID PARTIALLY OFFSETS USD/CHF LONG</span></div>
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">EUR: </span><span style="color:#FF4455;font-weight:700">BEARISH — EUROZONE ENERGY IMPORTER</span></div>
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">AUD: </span><span style="color:#CCAA00;font-weight:700">MIXED — COMMODITY RISK BUT CHINA DEMAND</span></div>
+        <div style="padding:8px 10px;background:#111;font-size:9px"><span style="color:#555">CAD: </span><span style="color:#CCAA00;font-weight:700">MIXED — OIL PRODUCER BUT US TARIFF RISK</span></div>
+      </div>
+    </div>
+    <div class="geo-event" style="border-left-color:#CCAA00">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="color:#CCAA00;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:4px">● ACTIVE — US TARIFF REGIME</div>
+          <div style="color:#ccc;font-size:11px;line-height:1.7">US tariffs in force on multiple trading partners. CAD and EUR directly exposed. Canada facing mortgage renewal cliff compounding domestic weakness.</div>
+        </div>
+        <span class="pill" style="color:#CCAA00;border-color:#CCAA00;background:#1a1200">MEDIUM IMPACT</span>
+      </div>
+    </div>
+    <div class="geo-event" style="border-left-color:#333">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="color:#888;font-size:10px;letter-spacing:2px;font-weight:700;margin-bottom:4px">○ MONITOR — RBNZ SURPRISE HAWKISH SHIFT</div>
+          <div style="color:#888;font-size:11px;line-height:1.7">RBNZ voted 3-3 split, held at 2.25%. CPI at 3.1% — above target. Market pricing ~50% probability of hike. Reduces USD/NZD divergence.</div>
+        </div>
+        <span class="pill" style="color:#555;border-color:#333;background:#111">LOW IMPACT</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Per-pair geo flags -->
+  <div class="sh"><div class="sh-line" style="background:#1a1a1a"></div><span class="sh-label" style="color:#CCAA00">GEO-RISK FLAG PER USD PAIR</span><div class="sh-line" style="background:#1a1a1a"></div></div>
+  <div class="tscroll">
+    <table style="min-width:700px">
+      <thead><tr>
+        <th style="color:#aaa;border-bottom-color:#CCAA00;background:#0d0d0d">PAIR</th>
+        <th style="color:#aaa;border-bottom-color:#CCAA00;background:#0d0d0d">USD DIRECTION</th>
+        <th style="color:#aaa;border-bottom-color:#CCAA00;background:#0d0d0d">GEO RISK FLAG</th>
+        <th style="color:#aaa;border-bottom-color:#CCAA00;background:#0d0d0d">REASON</th>
+        <th style="color:#aaa;border-bottom-color:#CCAA00;background:#0d0d0d">SIZING GUIDANCE</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="color:#fff;font-weight:700">USD/CHF</td><td style="color:#FF6B00">LONG USD</td><td><span class="geo-flag" style="background:#1a1000;color:#CCAA00;border:1px solid #CCAA00">⚠ AMBER</span></td><td style="color:#aaa;font-size:10px">CHF catching safe-haven bid from Iran war — partial offset to macro long</td><td style="color:#ccc">REDUCE TO 70% SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">USD/CAD</td><td style="color:#FF6B00">LONG USD</td><td><span class="geo-flag" style="background:#001500;color:#44CC88;border:1px solid #44CC88">✓ GREEN</span></td><td style="color:#aaa;font-size:10px">CAD hurt by tariffs and domestic weakness. Oil complex but BOC dovish overrides</td><td style="color:#ccc">FULL SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">EUR/USD</td><td style="color:#FF6B00">SHORT EUR</td><td><span class="geo-flag" style="background:#001500;color:#44CC88;border:1px solid #44CC88">✓ GREEN</span></td><td style="color:#aaa;font-size:10px">Eurozone energy importer — war hurts EUR more than USD. ECB cutting</td><td style="color:#ccc">FULL SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">NZD/USD</td><td style="color:#FF6B00">SHORT NZD</td><td><span class="geo-flag" style="background:#1a1000;color:#CCAA00;border:1px solid #CCAA00">⚠ AMBER</span></td><td style="color:#aaa;font-size:10px">RBNZ surprise hawkish shift — NZD catching a bid. Monitor CPI path</td><td style="color:#ccc">REDUCE TO 60% SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">GBP/USD</td><td style="color:#FF6B00">SHORT GBP</td><td><span class="geo-flag" style="background:#001500;color:#44CC88;border:1px solid #44CC88">✓ GREEN</span></td><td style="color:#aaa;font-size:10px">UK PMI at 48.5 — contraction. BOE neutral vs Fed hawkish</td><td style="color:#ccc">FULL SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">AUD/USD</td><td style="color:#FF6B00">SHORT AUD</td><td><span class="geo-flag" style="background:#1a1000;color:#CCAA00;border:1px solid #CCAA00">⚠ AMBER</span></td><td style="color:#aaa;font-size:10px">AUD = risk proxy. Oil shock complex. China demand uncertainty adds noise</td><td style="color:#ccc">REDUCE TO 65% SIZE</td></tr>
+        <tr><td style="color:#fff;font-weight:700">USD/JPY</td><td style="color:#888">AVOID</td><td><span class="geo-flag" style="background:#1a0000;color:#FF4455;border:1px solid #FF4455">✗ RED</span></td><td style="color:#aaa;font-size:10px">JPY safe-haven + BOJ hiking = macro and geo BOTH working against the long</td><td style="color:#ccc">STAND ASIDE</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 4 — WATCHLIST
+══════════════════════════════════════════════ -->
+<div id="panel-watch" class="panel fi">
+  <div style="margin-bottom:16px;color:#44CC88;font-size:9px;letter-spacing:3px">USD vs G7 · RANKED BY DIVERGENCE · GEO-RISK FILTERED · LIVE SPOT</div>
+  <div id="watchlist-content"></div>
+  <div class="erules" style="margin-top:20px">
+    <div style="color:#44CC88;font-size:9px;letter-spacing:3px;margin-bottom:10px;font-weight:700">EXECUTION RULES — CANDLESTICK BIBLE + MACRO FRAMEWORK</div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">01</span><span>Macro divergence score tells you WHAT to trade and WHICH direction — never trade against the macro bias</span></div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">02</span><span>Geo-risk flag filters the trade — RED = stand aside regardless of divergence score</span></div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">03</span><span>OIS pricing edge CONFIRMS the trade — strongest when hawk score gap AND bps gap both align</span></div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">04</span><span>Wait for chart trigger on daily close — Pin Bar / Engulfing at key S&R — no intraday noise</span></div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">05</span><span>3-month CPI + labour trend must confirm — one surprise print ≠ trend change</span></div>
+    <div class="er"><span style="color:#44CC88;font-weight:700;min-width:24px">06</span><span>Boring = profitable. Clear entry. No chasing. Size by conviction: HIGH=full, MED=half, LOW=skip</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TAB 5 — TRIGGER CHECKLIST
+══════════════════════════════════════════════ -->
+<div id="panel-trig" class="panel fi">
+  <div style="margin-bottom:20px">
+    <div style="color:#fff;font-size:9px;letter-spacing:3px;margin-bottom:4px">SOURCE: THE CANDLESTICK TRADING BIBLE</div>
+    <div style="color:#555;font-size:10px">Complete the checklist below for each pair before executing. Need 2+ confluence factors. Click each item to check/uncheck.</div>
+  </div>
+  <div id="trig-content"></div>
+  <div class="entry-rules-box" style="margin-top:20px">
+    <div style="color:#fff;font-size:9px;letter-spacing:3px;margin-bottom:12px;font-weight:700">ENTRY + STOP RULES — CANDLESTICK BIBLE</div>
+    <div class="grid-2">
+      <div>
+        <div style="color:#FF6B00;font-size:9px;margin-bottom:8px;letter-spacing:2px">TOP-DOWN ANALYSIS SEQUENCE</div>
+        <div style="color:#aaa;font-size:10px;line-height:1.8">① WEEKLY chart — identify major S&R levels and market structure (HH/HL or LH/LL)<br>② DAILY chart — confirm trend direction and find the trigger S&R level<br>③ ENTRY chart — wait for Pin Bar, Engulfing, or Inside Bar at that level<br>④ Enter on DAILY CLOSE of trigger candle — never intraday</div>
+      </div>
+      <div>
+        <div style="color:#FF6B00;font-size:9px;margin-bottom:8px;letter-spacing:2px">ENTRY + RISK RULES</div>
+        <div style="color:#aaa;font-size:10px;line-height:1.8">ENTRY: Daily close of trigger candle<br>STOP: Beyond the wick/tail of trigger candle<br>TARGET: Next major S&R level (min 2:1 R:R)<br>SIZE: HIGH conviction = full · MED = half · LOW = skip<br>RULE: Never trade retracement moves — only impulsive entries</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end #tc -->
+
+<div id="ftr">
+  <span>MAKUUJR RESEARCH © <span id="yr"></span> · MACRO-DIVERGENCE ENGINE · USD vs G7</span>
+  <span>FX: FRANKFURTER.APP · GOLD: METALS.LIVE · OIS: CME FEDWATCH · MACRO: BLS/BEA · NOT FINANCIAL ADVICE</span>
+</div>
+
+<script>
+document.getElementById("yr").textContent = new Date().getFullYear();
+
+// ══ STATIC DATA ═══════════════════════════════════════════
+const CB_DATA = [
+  {bank:"Fed", ccy:"USD", rate:"3.50–3.75%", decision:"Apr 29 2026",
+   cpi:"2.8% YoY", cpiMoM:"+0.4%", pce:"3.30%", unemp:"4.3%",
+   mfgPMI:"55.3↑", svcPMI:"51.7→", hawk:8, stance:"hawkish", nextMove:"hold",
+   gap:0, risk:"Services inflation re-accelerating; Iran war energy shock"},
+  {bank:"ECB", ccy:"EUR", rate:"2.00%", decision:"Apr 30 2026",
+   cpi:"2.2%→", cpiMoM:"—", pce:"—", unemp:"6.2%",
+   mfgPMI:"49.2↓", svcPMI:"50.1→", hawk:3, stance:"dovish", nextMove:"cut",
+   gap:5, risk:"Euro strength hurting exports; Eurozone energy importer"},
+  {bank:"BOE", ccy:"GBP", rate:"4.25%", decision:"May 08 2026",
+   cpi:"3.5%→", cpiMoM:"—", pce:"—", unemp:"4.5%↑",
+   mfgPMI:"47.8↓", svcPMI:"49.0↓", hawk:5, stance:"neutral", nextMove:"hold",
+   gap:3, risk:"UK PMI in contraction; sticky services CPI limits cuts"},
+  {bank:"BOJ", ccy:"JPY", rate:"0.50%", decision:"May 01 2026",
+   cpi:"3.6%↑", cpiMoM:"—", pce:"—", unemp:"2.5%",
+   mfgPMI:"48.5↓", svcPMI:"52.0↑", hawk:6, stance:"hawkish", nextMove:"hike",
+   gap:2, risk:"Energy importer — oil shock hurts; hike pace uncertain"},
+  {bank:"RBA", ccy:"AUD", rate:"3.85%", decision:"May 06 2026",
+   cpi:"4.6%↑", cpiMoM:"—", pce:"—", unemp:"4.1%↑",
+   mfgPMI:"51.0→", svcPMI:"50.8→", hawk:5, stance:"neutral", nextMove:"cut",
+   gap:3, risk:"China demand slowdown; oil shock pushing CPI higher"},
+  {bank:"RBNZ", ccy:"NZD", rate:"2.25%", decision:"May 28 2026",
+   cpi:"3.1%↑", cpiMoM:"+0.9% Q/Q", pce:"—", unemp:"5.1%↑",
+   mfgPMI:"48.0↓", svcPMI:"49.5↓", hawk:5, stance:"shifting", nextMove:"hold",
+   gap:3, risk:"3-3 split vote — surprise hawkish shift; CPI above target"},
+  {bank:"BOC", ccy:"CAD", rate:"2.75%", decision:"Apr 16 2026",
+   cpi:"2.5%↓", cpiMoM:"+0.4%", pce:"—", unemp:"6.9%↑",
+   mfgPMI:"47.5↓", svcPMI:"48.8↓", hawk:3, stance:"dovish", nextMove:"cut",
+   gap:5, risk:"US tariff exposure; mortgage renewal cliff; CAD PMI contracting"},
+  {bank:"SNB", ccy:"CHF", rate:"0.25%", decision:"Mar 20 2026",
+   cpi:"0.3%↓", cpiMoM:"—", pce:"—", unemp:"2.8%",
+   mfgPMI:"48.0↓", svcPMI:"51.0→", hawk:2, stance:"dovish", nextMove:"cut",
+   gap:6, risk:"Deflation risk; CHF safe-haven demand from Iran war"},
+];
+
+const PAIRS = [
+  {pair:"USD/CHF", long:"USD", short:"CHF", conv:"LONG USD",
+   div:6, conv_level:"high", geo:"amber", geoSize:"70%",
+   entry:"Buy dips toward 0.8900 daily S&R — widest G10 divergence. AMBER geo: CHF safe-haven bid from Iran war — reduce size",
+   oiEdge:"+48bps Fed hold vs SNB -48bps priced", base:"USD", quote:"CHF"},
+  {pair:"USD/CAD", long:"USD", short:"CAD", conv:"LONG USD",
+   div:5, conv_level:"high", geo:"green", geoSize:"100%",
+   entry:"Buy retracements to 1.3800–1.3850 zone. BOC cutting into domestic weakness + tariff pressure. Full size — geo confirms",
+   oiEdge:"Fed 0 cuts priced vs BOC -35bps priced", base:"USD", quote:"CAD"},
+  {pair:"EUR/USD", long:"USD", short:"EUR", conv:"SHORT EUR",
+   div:5, conv_level:"high", geo:"green", geoSize:"100%",
+   entry:"Sell rallies toward 1.0900–1.1000 resistance. ECB at 2.00% cutting, Eurozone energy importer. Full size — geo confirms",
+   oiEdge:"Fed hold vs ECB -75bps priced 3 meetings", base:"EUR", quote:"USD"},
+  {pair:"GBP/USD", long:"USD", short:"GBP", conv:"SHORT GBP",
+   div:3, conv_level:"medium", geo:"green", geoSize:"100%",
+   entry:"Sell rallies toward 1.2700–1.2800 resistance. UK PMI 48.5 in contraction. Medium conviction",
+   oiEdge:"Fed hold vs BOE -50bps priced", base:"GBP", quote:"USD"},
+  {pair:"AUD/USD", long:"USD", short:"AUD", conv:"SHORT AUD",
+   div:3, conv_level:"medium", geo:"amber", geoSize:"65%",
+   entry:"Sell AUD/USD rallies. RBA cutting cycle. AMBER geo: oil shock complicating AUD direction. Reduce size",
+   oiEdge:"Fed hold vs RBA -50bps priced", base:"AUD", quote:"USD"},
+  {pair:"NZD/USD", long:"USD", short:"NZD", conv:"SHORT NZD",
+   div:3, conv_level:"medium", geo:"amber", geoSize:"60%",
+   entry:"Monitor — RBNZ surprise hawkish shift reduces conviction. Wait for clarity on June RBNZ decision",
+   oiEdge:"Fed hold vs RBNZ uncertain", base:"NZD", quote:"USD"},
+  {pair:"USD/JPY", long:"—", short:"—", conv:"AVOID",
+   div:2, conv_level:"low", geo:"red", geoSize:"0%",
+   entry:"STAND ASIDE — BOJ hiking + JPY safe-haven from Iran war. Both macro and geo working against USD long",
+   oiEdge:"Fed hold vs BOJ +25bps priced", base:"USD", quote:"JPY"},
+];
+
+const TRIG_DATA = PAIRS.slice(0,5).map(p=>({
+  pair: p.pair,
+  dir: p.conv,
+  checks: [
+    {id:"ms",  label:"Market structure confirmed (trending in bias direction)?"},
+    {id:"wsr", label:"Weekly S&R level identified and price approaching it?"},
+    {id:"td",  label:"Top-down analysis aligned (Weekly → Daily → Entry)?"},
+    {id:"sr",  label:"Price at key Support/Resistance level on daily chart?"},
+    {id:"pin", label:"Pin Bar (Hammer/Shooting Star) pattern present?"},
+    {id:"eng", label:"Engulfing Bar (Bullish/Bearish) pattern present?"},
+    {id:"ins", label:"Inside Bar / False Breakout pattern present?"},
+    {id:"imp", label:"Pattern at beginning of impulsive move (not retracement)?"},
+  ],
+  state: {}
+}));
+
+// ══ LIVE DATA ══════════════════════════════════════════════
+let liveRates = {}, prevRates = {};
+let liveGold = null;
+let cTimer = null, cSecs = 180;
+
+async function fetchFX() {
+  try {
+    const r = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,JPY,CAD,CHF,AUD,NZD", {signal:AbortSignal.timeout(8000)});
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (j.rates) { prevRates = {...liveRates}; liveRates = j.rates; return true; }
+  } catch(e) {}
+  try {
+    const r2 = await fetch("https://open.er-api.com/v6/latest/USD", {signal:AbortSignal.timeout(8000)});
+    if (!r2.ok) return false;
+    const j2 = await r2.json();
+    if (j2.conversion_rates) {
+      prevRates = {...liveRates};
+      const c = j2.conversion_rates;
+      liveRates = {EUR:c.EUR,GBP:c.GBP,JPY:c.JPY,CAD:c.CAD,CHF:c.CHF,AUD:c.AUD,NZD:c.NZD};
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function fetchGold() {
+  try {
+    const r = await fetch("https://api.metals.live/v1/spot", {signal:AbortSignal.timeout(8000)});
+    if (!r.ok) return false;
+    const j = await r.json();
+    if (Array.isArray(j) && j[0]?.gold) { liveGold = parseFloat(j[0].gold); return true; }
+    if (j.gold) { liveGold = parseFloat(j.gold); return true; }
+  } catch(e) {}
+  return false;
+}
+
+function calcPairRate(pair) {
+  const r = liveRates;
+  if (!Object.keys(r).length) return null;
+  try {
+    if (pair==="USD/CHF") return {v:r.CHF, dp:4};
+    if (pair==="USD/CAD") return {v:r.CAD, dp:4};
+    if (pair==="USD/JPY") return {v:r.JPY, dp:2};
+    if (pair==="EUR/USD") return {v:1/r.EUR, dp:4};
+    if (pair==="GBP/USD") return {v:1/r.GBP, dp:4};
+    if (pair==="AUD/USD") return {v:1/r.AUD, dp:4};
+    if (pair==="NZD/USD") return {v:1/r.NZD, dp:4};
+  } catch(e) {}
+  return null;
+}
+
+function fmtRate(pair) {
+  const r = calcPairRate(pair);
+  return r ? r.v.toFixed(r.dp) : null;
+}
+
+function pairChg(pair) {
+  if (!Object.keys(prevRates).length || !Object.keys(liveRates).length) return null;
+  const cur = calcPairRate(pair);
+  if (!cur) return null;
+  const pr = liveRates, pp = prevRates;
+  let prevV = null;
+  try {
+    if (pair==="USD/CHF") prevV = pp.CHF;
+    else if (pair==="USD/CAD") prevV = pp.CAD;
+    else if (pair==="USD/JPY") prevV = pp.JPY;
+    else if (pair==="EUR/USD") prevV = 1/pp.EUR;
+    else if (pair==="GBP/USD") prevV = 1/pp.GBP;
+    else if (pair==="AUD/USD") prevV = 1/pp.AUD;
+    else if (pair==="NZD/USD") prevV = 1/pp.NZD;
+  } catch(e) {}
+  if (!prevV) return null;
+  return cur.v - prevV;
+}
+
+// ══ REFRESH ════════════════════════════════════════════════
+async function refreshAll() {
+  setLoad(true);
+  const [fxOk, goldOk] = await Promise.all([fetchFX(), fetchGold()]);
+  if (getFredKey()) fetchFRED(); // non-blocking FRED fetch
+  const now = new Date();
+  const ts = now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+
+  document.getElementById("ds-fx").textContent = fxOk ? "LIVE · " + ts : "OFFLINE";
+  document.getElementById("ds-fx").style.color = fxOk ? "#44CC88" : "#FF4455";
+  document.getElementById("ds-gold").textContent = goldOk ? `$${liveGold?.toFixed(0)}/oz · ${ts}` : "OFFLINE";
+  document.getElementById("ds-gold").style.color = goldOk ? "#CCAA00" : "#FF4455";
+  document.getElementById("dot").style.background = (fxOk||goldOk) ? "#44CC88" : "#FF4455";
+  document.getElementById("stext").textContent = (fxOk||goldOk) ? "LIVE" : "OFFLINE";
+  document.getElementById("stext").style.color = (fxOk||goldOk) ? "#44CC88" : "#FF4455";
+  document.getElementById("lastscan").textContent = "LAST REFRESH: " + now.toLocaleString();
+
+  updateTicker();
+  if (goldOk && liveGold) {
+    document.getElementById("geo-gold").textContent = "$"+liveGold.toFixed(0)+"/oz";
+  }
+
+  renderCBMatrix();
+  renderWatchlist();
+  startCountdown();
+  setLoad(false);
+}
+
+function updateTicker() {
+  const pairs = [
+    {key:"eurusd", pair:"EUR/USD"},
+    {key:"gbpusd", pair:"GBP/USD"},
+    {key:"usdjpy", pair:"USD/JPY"},
+    {key:"usdcad", pair:"USD/CAD"},
+    {key:"usdchf", pair:"USD/CHF"},
+    {key:"audusd", pair:"AUD/USD"},
+    {key:"nzdusd", pair:"NZD/USD"},
+  ];
+  pairs.forEach(({key, pair}) => {
+    const rate = fmtRate(pair);
+    const chg  = pairChg(pair);
+    if (rate) updateTickerPair(key, rate, chg);
+  });
+  if (liveGold) updateTickerStatic("tick-gold", "$"+liveGold.toFixed(0), "#CCAA00");
+}
+
+// ══ HELPERS ════════════════════════════════════════════════
+function sbar(n,color="#FF6B00"){
+  n=Math.min(10,Math.max(0,n||0));
+  let h=`<div class="sbar">`;
+  for(let i=0;i<10;i++) h+=`<div class="seg${i<n?" on":""}"></div>`;
+  return h+`<span class="snum" style="color:${color}">${n}</span></div>`;
+}
+function stancePill(v){
+  const h=/hawk/i.test(v),d=/dove/i.test(v),s=/shift|neutral/i.test(v);
+  const c=h?"#FF6B00":d?"#00E5FF":s?"#CCAA00":"#888";
+  const bg=h?"#2d1200":d?"#001a2d":s?"#1a1200":"#111";
+  return`<span class="pill" style="color:${c};background:${bg};border-color:${c}">${(v||"").toUpperCase()}</span>`;
+}
+function movePill(v){
+  const h=/hike/i.test(v),c=/cut/i.test(v);
+  const col=h?"#FF4455":c?"#44CC88":"#888",bg=h?"#1a0000":c?"#001a00":"#111";
+  return`<span class="pill" style="color:${col};background:${bg};border-color:${col}">${(v||"").toUpperCase()}</span>`;
+}
+function gapPill(g){
+  const c=g>=5?"#FF6B00":g>=3?"#CCAA00":"#555";
+  const bg=g>=5?"#2d1200":g>=3?"#1a1200":"#111";
+  return`<span class="pill" style="color:${c};background:${bg};border-color:${c};font-size:12px;padding:4px 10px">${g>0?"+":""}${g}</span>`;
+}
+function convPill(v){
+  const h=/high/i.test(v),m=/med/i.test(v);
+  const c=h?"#FF6B00":m?"#CCAA00":"#555",bg=h?"#2d1200":m?"#1a1200":"#111",b=h?"#FF6B00":m?"#CCAA00":"#222";
+  return`<span class="pill" style="color:${c};background:${bg};border-color:${b}">${(v||"low").toUpperCase()} CONVICTION</span>`;
+}
+
+// ══ RENDER CB MATRIX ═══════════════════════════════════════
+function renderCBMatrix(){
+  let rows = "";
+  CB_DATA.forEach((cb,i) => {
+    const isFed = cb.bank === "Fed";
+    const bg = isFed ? "background:#1a0800!important" : "";
+    rows += `<tr style="${bg}">
+      <td style="color:#fff;font-weight:700;font-size:12px">${cb.bank} ${isFed?'<span style="color:#FF6B00;font-size:8px">★ ANCHOR</span>':''}</td>
+      <td style="color:#FF6B00;font-weight:700">${cb.rate}<br><span style="color:#444;font-size:8px">${cb.decision}</span></td>
+      <td style="color:#ccc">${cb.cpi}<br><span style="color:#888;font-size:9px">MoM: ${cb.cpiMoM}</span></td>
+      <td style="color:${cb.pce!=="—"?"#FF4455":"#444"}">${cb.pce}</td>
+      <td style="color:#ccc">${cb.unemp}</td>
+      <td style="color:${cb.mfgPMI.includes("↑")?"#44CC88":cb.mfgPMI.includes("↓")?"#FF4455":"#888"}">${cb.mfgPMI}</td>
+      <td style="color:${cb.svcPMI.includes("↑")?"#44CC88":cb.svcPMI.includes("↓")?"#FF4455":"#888"}">${cb.svcPMI}</td>
+      <td>${sbar(cb.hawk)}</td>
+      <td>${stancePill(cb.stance)}</td>
+      <td>${isFed?"—":gapPill(cb.gap)}</td>
+      <td>${movePill(cb.nextMove)}</td>
+      <td style="color:#777;font-size:9px;max-width:180px;line-height:1.4">${cb.risk}</td>
+    </tr>`;
+  });
+  document.getElementById("cb-tbody").innerHTML = rows;
+}
+
+// ══ RENDER WATCHLIST ═══════════════════════════════════════
+function renderWatchlist(){
+  const medals = ["◆ PRIME","◇ SECONDARY","◈ TERTIARY","◉ FOURTH","◌ FIFTH","◎ SIXTH","— AVOID"];
+  let h = "";
+  PAIRS.forEach((p,i) => {
+    const rate = fmtRate(p.pair);
+    const isAvoid = p.geo==="red";
+    const geoColor = p.geo==="green"?"#44CC88":p.geo==="amber"?"#CCAA00":"#FF4455";
+    const geoLabel = p.geo==="green"?"✓ GREEN":p.geo==="amber"?"⚠ AMBER":"✗ RED — AVOID";
+    const convColor = p.conv_level==="high"?"#FF6B00":p.conv_level==="medium"?"#CCAA00":"#555";
+    const borderStyle = isAvoid?"border-color:#FF4455;opacity:.6":i===0?"border-color:#44CC88":"";
+
+    h += `<div class="wc${i===0?" top":""}" style="${borderStyle}">
+      <div class="wch">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <span style="color:#44CC88;font-size:9px;letter-spacing:3px;font-weight:700">${medals[Math.min(i,6)]}</span>
+          <span style="color:${isAvoid?"#444":"#fff"};font-size:24px;font-weight:700;letter-spacing:1px">${p.pair}</span>
+          <span style="font-size:11px;font-weight:700;padding:3px 12px;border:1px solid;color:${isAvoid?"#333":"#FF6B00"};border-color:${isAvoid?"#333":"#FF6B00"}">${p.conv}</span>
+          <span class="geo-flag" style="background:${p.geo==="green"?"#001500":p.geo==="amber"?"#1a1000":"#1a0000"};color:${geoColor};border:1px solid ${geoColor}">${geoLabel}</span>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+          <div style="text-align:center"><div style="color:#444;font-size:8px;letter-spacing:1px">LIVE SPOT</div>
+            <div style="color:${isAvoid?"#333":"#fff"};font-size:18px;font-weight:700">${rate||"FETCHING..."}</div></div>
+          <div style="text-align:center"><div style="color:#444;font-size:8px">DIVERGENCE</div><div style="color:${convColor};font-size:18px;font-weight:700">${p.div}/10</div></div>
+          <div style="text-align:center"><div style="color:#444;font-size:8px">SIZE</div><div style="color:${geoColor};font-size:14px;font-weight:700">${p.geoSize}</div></div>
+          <div>${convPill(p.conv_level)}</div>
+        </div>
+      </div>
+      ${!isAvoid?`<div style="background:#060606;border:1px solid #111;padding:10px 14px;margin-bottom:12px">
+        <div style="color:#444;font-size:8px;letter-spacing:1px;margin-bottom:4px">OIS PRICING EDGE</div>
+        <div style="color:#888;font-size:10px">${p.oiEdge}</div>
+      </div>`:""}
+      <div class="wlogic" style="border-left:3px solid ${isAvoid?"#FF4455":convColor}">
+        ${p.entry}
+      </div>
+    </div>`;
+  });
+  document.getElementById("watchlist-content").innerHTML = h;
+}
+
+// ══ RENDER TRIGGER CHECKLIST ═══════════════════════════════
+function renderTriggers(){
+  let h = "";
+  TRIG_DATA.forEach((td,pi) => {
+    const checked = td.checks.filter(c=>td.state[c.id]).length;
+    const pct = Math.round((checked/td.checks.length)*100);
+    const canEnter = checked >= 2;
+    const scoreColor = checked>=5?"#44CC88":checked>=3?"#CCAA00":"#FF4455";
+
+    h += `<div class="trig-pair${pi===0?" top":""}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="color:#fff;font-size:20px;font-weight:700">${td.pair}</span>
+          <span style="color:#888;font-size:10px;border:1px solid #222;padding:2px 10px">${td.dir}</span>
+        </div>
+        <div class="score-display" style="gap:12px">
+          <div class="score-num" style="color:${scoreColor}">${checked}</div>
+          <div style="font-size:9px;color:#555">/8 CHECKS<br>${canEnter?"<span style='color:#44CC88;font-weight:700'>✓ CAN ENTER</span>":"<span style='color:#FF4455'>NEED 2+ MIN</span>"}</div>
+          <div style="width:80px;height:4px;background:#111;align-self:center"><div style="height:4px;background:${scoreColor};width:${pct}%"></div></div>
+        </div>
+      </div>
+      <div class="check-grid">`;
+
+    td.checks.forEach(c => {
+      const isChk = !!td.state[c.id];
+      h += `<div class="check-item" onclick="toggleCheck(${pi},'${c.id}')">
+        <div class="check-box${isChk?" checked":""}">${isChk?`<svg width="12" height="12" viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="#44CC88" stroke-width="2" fill="none"/></svg>`:""}</div>
+        <div class="check-text">${c.label}</div>
+      </div>`;
+    });
+
+    h += `</div></div>`;
+  });
+  document.getElementById("trig-content").innerHTML = h;
+}
+
+function toggleCheck(pi, cid){
+  TRIG_DATA[pi].state[cid] = !TRIG_DATA[pi].state[cid];
+  renderTriggers();
+}
+
+// ══ COUNTDOWN ══════════════════════════════════════════════
+function startCountdown(){
+  clearInterval(cTimer); cSecs=180; updCD();
+  cTimer=setInterval(()=>{ cSecs--; if(cSecs<=0){refreshAll();return;} updCD(); },1000);
+}
+function updCD(){
+  const m=Math.floor(cSecs/60),s=cSecs%60;
+  document.getElementById("ctext").textContent=`${m}:${String(s).padStart(2,"0")}`;
+  document.getElementById("cfill").style.width=((cSecs/180)*100)+"%";
+}
+function setLoad(on){
+  document.getElementById("rbtn").disabled=on;
+  document.getElementById("fetching").style.display=on?"inline":"none";
+}
+
+// ══ TABS ═══════════════════════════════════════════════════
+function sw(id,btn){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("panel-"+id).classList.add("active","fi");
+  btn.classList.add("active");
+}
+
+// ══ FRED API ═══════════════════════════════════════════════
+// Series: DGS2=2Y Yield, DTWEXBGS=DXY, PCEPILFE=Core PCE,
+//         CPILFESL=Core CPI, UNRATE=Unemployment, FEDFUNDS=Fed Rate
+
+const FRED_SERIES = {
+  yield2y: "DGS2",
+  dxy:     "DTWEXBGS",
+  corePCE: "PCEPILFE",
+  coreCPI: "CPILFESL",
+  unemp:   "UNRATE",
+};
+
+function getFredKey() {
+  return localStorage.getItem("mkr_fred_key") || "";
+}
+
+function saveFredKey() {
+  const k = document.getElementById("fred-key-input").value.trim();
+  if (!k) { alert("Please paste your FRED API key first."); return; }
+  localStorage.setItem("mkr_fred_key", k);
+  document.getElementById("fred-status").textContent = "KEY SAVED — CONNECTING...";
+  document.getElementById("fred-status").style.color = "#CCAA00";
+  fetchFRED().then(ok => {
+    if (ok) {
+      document.getElementById("fred-status").textContent = "CONNECTED ● LIVE";
+      document.getElementById("fred-status").style.color = "#44CC88";
+    } else {
+      document.getElementById("fred-status").textContent = "KEY ERROR — CHECK AND RETRY";
+      document.getElementById("fred-status").style.color = "#FF4455";
+    }
+  });
+}
+
+async function fetchOneFRED(seriesId, apiKey) {
+  try {
+    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&sort_order=desc&limit=5&file_type=json`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if (!r.ok) return null;
+    const j = await r.json();
+    const obs = (j.observations || []).filter(o => o.value !== ".");
+    if (!obs.length) return null;
+    return { value: parseFloat(obs[0].value).toFixed(2), date: obs[0].date,
+             prev: obs[1] ? parseFloat(obs[1].value) : null };
+  } catch(e) { return null; }
+}
+
+async function fetchFRED() {
+  const key = getFredKey();
+  if (!key) return false;
+
+  const [y2, dxy, pce, cpi, unemp] = await Promise.all([
+    fetchOneFRED(FRED_SERIES.yield2y, key),
+    fetchOneFRED(FRED_SERIES.dxy,     key),
+    fetchOneFRED(FRED_SERIES.corePCE, key),
+    fetchOneFRED(FRED_SERIES.coreCPI, key),
+    fetchOneFRED(FRED_SERIES.unemp,   key),
+  ]);
+
+  const ts = new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+
+  // 2Y Yield
+  if (y2) {
+    const el = document.getElementById("yield-2y");
+    if (el) { el.textContent = y2.value + "%"; el.style.color = "#CCAA00"; }
+    const ds = document.getElementById("ds-yield");
+    if (ds) { ds.textContent = y2.value + "% · " + y2.date; ds.style.color = "#CCAA00"; }
+    // add to ticker
+    updateTickerItem("2Y YIELD", y2.value + "%", null, "#CCAA00");
+  }
+
+  // DXY
+  if (dxy) {
+    const el = document.getElementById("dxy-val");
+    if (el) { el.textContent = parseFloat(dxy.value).toFixed(1); el.style.color = "#CCAA00"; }
+    const ds = document.getElementById("ds-dxy");
+    if (ds) {
+      const chg = dxy.prev ? (parseFloat(dxy.value) - dxy.prev).toFixed(2) : null;
+      ds.textContent = parseFloat(dxy.value).toFixed(1) + (chg ? (chg>0?" ▲":" ▼") + Math.abs(chg) : "");
+      ds.style.color = "#CCAA00";
+    }
+    updateTickerItem("DXY", parseFloat(dxy.value).toFixed(1), dxy.prev ? parseFloat(dxy.value) - dxy.prev : null, "#CCAA00");
+  }
+
+  // Core PCE
+  if (pce) {
+    const ds = document.getElementById("ds-pce");
+    if (ds) { ds.textContent = pce.value + "% · " + pce.date; ds.style.color = "#FF4455"; }
+    // Update Fed panel card
+    const card = document.querySelector("[data-fred='pce']");
+    if (card) card.textContent = pce.value + "%";
+  }
+
+  // Core CPI
+  if (cpi && cpi.prev) {
+    const mom = (parseFloat(cpi.value) - cpi.prev).toFixed(2);
+    const ds = document.getElementById("ds-cpi-stat");
+    if (ds) { ds.textContent = (mom>0?"+":"") + mom + "% MoM · " + cpi.date; ds.style.color = parseFloat(mom) > 0.3 ? "#FF4455" : "#CCAA00"; }
+  }
+
+  // Unemployment
+  if (unemp) {
+    const ds = document.getElementById("ds-unemp");
+    if (ds) { ds.textContent = unemp.value + "% · " + unemp.date; ds.style.color = "#888"; }
+    const card = document.querySelector("[data-fred='unemp']");
+    if (card) card.textContent = unemp.value + "%";
+    updateTickerItem("UNEMP", unemp.value + "%", null, "#888");
+  }
+
+  return !!(y2 || dxy || pce || cpi || unemp);
+}
+
+// Update ticker with FRED data (append new items)
+function updateTickerItem(label, value, chg, color) {
+  const track = document.getElementById("ticker-track");
+  if (!track) return;
+  const id = "tick-fred-" + label.replace(/[^a-z0-9]/gi,"");
+  let existing = document.getElementById(id);
+  const chgHtml = chg !== null ? `<span class="${chg>=0?"tick-chg-up":"tick-chg-dn"}">${chg>=0?"▲":"▼"}${Math.abs(chg).toFixed(2)}</span>` : "";
+  const html = `<span class="tick-label" style="color:rgba(0,0,0,0.45)">${label}</span><span style="color:#000;font-size:13px;font-weight:700">${value}</span>${chgHtml}`;
+  if (existing) {
+    existing.innerHTML = html;
+  } else {
+    const div = document.createElement("div");
+    div.className = "tick-item";
+    div.id = id;
+    div.innerHTML = html;
+    track.appendChild(div);
+    // duplicate for loop
+    const div2 = div.cloneNode(true);
+    div2.id = id + "_2";
+    track.appendChild(div2);
+  }
+}
+
+// ══ TICKER ENGINE ══════════════════════════════════════════
+const TICKER_PAIRS = [
+  {label:"EUR/USD", key:"eurusd"},
+  {label:"GBP/USD", key:"gbpusd"},
+  {label:"USD/JPY", key:"usdjpy"},
+  {label:"USD/CAD", key:"usdcad"},
+  {label:"USD/CHF", key:"usdchf"},
+  {label:"AUD/USD", key:"audusd"},
+  {label:"NZD/USD", key:"nzdusd"},
+];
+const TICKER_STATIC = [
+  {label:"XAU/USD", value:"—",  color:"#CCAA00", id:"tick-gold"},
+  {label:"CORE PCE",value:"3.30%↑", color:"#FF4455", id:"tick-pce"},
+  {label:"CPI MoM", value:"+0.4%↑", color:"#FF4455", id:"tick-cpi"},
+  {label:"FED RATE",value:"3.50–3.75%", color:"#000", id:"tick-fedrate"},
+  {label:"JUN HOLD",value:"99.9%", color:"#003d00", id:"tick-hold"},
+  {label:"GEO RISK",value:"ELEVATED", color:"#3d0000", id:"tick-geo"},
+];
+
+let tickerX = 0, tickerPaused = false, tickerRAF = null, tickerBuilt = false;
+
+function buildTicker() {
+  const track = document.getElementById("ticker-track");
+  if (!track || tickerBuilt) return;
+  tickerBuilt = true;
+  track.innerHTML = "";
+
+  function makeItem(labelTxt, priceTxt, priceColor, chgTxt, chgClass, itemId) {
+    const div = document.createElement("div");
+    div.className = "tick-item";
+    if (itemId) div.id = itemId;
+    div.innerHTML =
+      `<span class="tick-pair">${labelTxt}</span>` +
+      `<span class="tick-price" style="color:${priceColor||"#000"}">${priceTxt}</span>` +
+      (chgTxt ? `<span class="${chgClass||"tick-load"}">${chgTxt}</span>` : "");
+    return div;
+  }
+
+  // section label
+  function makeLabel(txt) {
+    const s = document.createElement("span");
+    s.className = "tick-label";
+    s.textContent = txt;
+    return s;
+  }
+
+  // FX pairs
+  track.appendChild(makeLabel("USD PAIRS"));
+  TICKER_PAIRS.forEach(p => {
+    track.appendChild(makeItem(p.label, "●", "#000", "", "tick-load", "tick-"+p.key));
+  });
+
+  // Static macro items
+  track.appendChild(makeLabel("MACRO"));
+  TICKER_STATIC.forEach(s => {
+    track.appendChild(makeItem(s.label, s.value, s.color, "", "", s.id));
+  });
+
+  // Clone everything for seamless loop
+  Array.from(track.children).forEach(child => {
+    const clone = child.cloneNode(true);
+    clone.id = child.id ? child.id + "_c" : "";
+    track.appendChild(clone);
+  });
+
+  // Measure half-width for loop reset
+  requestAnimationFrame(() => {
+    const half = track.scrollWidth / 2;
+    let speed = 0.5; // px per frame
+
+    const wrap = document.getElementById("ticker-wrap");
+    wrap.addEventListener("mouseenter", () => tickerPaused = true);
+    wrap.addEventListener("mouseleave", () => tickerPaused = false);
+
+    function step() {
+      if (!tickerPaused) {
+        tickerX -= speed;
+        if (Math.abs(tickerX) >= half) tickerX = 0;
+        track.style.transform = `translateX(${tickerX}px)`;
+      }
+      tickerRAF = requestAnimationFrame(step);
+    }
+    step();
+  });
+}
+
+function updateTickerPair(key, rate, chg) {
+  ["tick-"+key, "tick-"+key+"_c"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const priceEl = el.querySelector(".tick-price");
+    const chgEl   = el.querySelector(".tick-chg-up, .tick-chg-dn, .tick-load");
+    if (priceEl) priceEl.textContent = rate;
+    if (chgEl) {
+      if (chg !== null) {
+        chgEl.className = chg >= 0 ? "tick-chg-up" : "tick-chg-dn";
+        chgEl.textContent = (chg >= 0 ? "▲" : "▼") + Math.abs(chg).toFixed(4);
+      } else {
+        chgEl.className = "tick-load";
+        chgEl.textContent = "●";
+      }
+    }
+  });
+}
+
+function updateTickerStatic(id, value, color) {
+  [id, id+"_c"].forEach(tid => {
+    const el = document.getElementById(tid);
+    if (!el) return;
+    const priceEl = el.querySelector(".tick-price");
+    if (priceEl) { priceEl.textContent = value; if(color) priceEl.style.color = color; }
+  });
+}
+
+// ══ INIT ═══════════════════════════════════════════════════
+// Load saved FRED key
+(function(){
+  const k = localStorage.getItem("mkr_fred_key");
+  if (k) {
+    document.getElementById("fred-key-input").value = k;
+    document.getElementById("fred-status").textContent = "KEY LOADED — FETCHING FRED DATA...";
+    document.getElementById("fred-status").style.color = "#CCAA00";
+    fetchFRED().then(ok=>{
+      document.getElementById("fred-status").textContent = ok ? "CONNECTED ● LIVE" : "KEY ERROR — RE-ENTER";
+      document.getElementById("fred-status").style.color = ok ? "#44CC88" : "#FF4455";
+    });
+  }
+})();
+renderCBMatrix();
+renderWatchlist();
+renderTriggers();
+buildTicker();
+refreshAll();
+</script>
+</body>
+</html>
