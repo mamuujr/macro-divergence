@@ -1198,5 +1198,27 @@ renderTriggers();
 buildTicker();
 refreshAll();
 </script>
+  <!-- START OF TRADINGVIEW CHART CONTAINER -->
+<section style="display: block; width: 95%; max-width: 1400px; height: 600px; margin: 40px auto; padding: 15px; background: #131722; border: 1px solid #2a2e39; border-radius: 8px; box-sizing: border-box; clear: both;">
+  <h3 style="color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #2a2e39; font-size: 16px; font-weight: 500; letter-spacing: 0.5px;">📈 LIVE MACRO REFERENCE FEED (DXY)</h3>
+  <div class="tradingview-widget-container" style="height: calc(100% - 45px); width: 100%;">
+    <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
+    <script type="text/javascript" src="https://tradingview.com" async>
+    {
+      "autosize": true,
+      "symbol": "CAPITALCOM:DXY",
+      "interval": "D",
+      "timezone": "Etc/UTC",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "allow_symbol_change": true,
+      "calendar": false,
+      "support_host": "https://tradingview.com"
+    }
+    </script>
+  </div>
+</section>
+<!-- END OF TRADINGVIEW CHART CONTAINER -->
 </body>
 </html>
